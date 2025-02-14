@@ -1,0 +1,181 @@
+NodeSelector vs Node Affinity vs Taints & Tolerations
+
+1️⃣ nodeSelector (Basic Placement)
+Used to schedule a pod on specific nodes based on labels.
+Simple, but only supports exact key-value matches.
+If no node has the required label, the pod remains pending.
+✅ Example:
+yaml
+Copy
+Edit
+spec:
+  nodeSelector:
+    storage: ssd 
+
+2️⃣ Node Affinity (Advanced Placement)
+More flexible than nodeSelector, supports:
+✅ Multiple conditions (In, NotIn, Exists, DoesNotExist)
+✅ Hard rules (requiredDuringSchedulingIgnoredDuringExecution)
+✅ Soft preferences (preferredDuringSchedulingIgnoredDuringExecution)
+Used when we need better control over scheduling.
+✅ Example: Pod prefers GPU nodes but can run elsewhere if needed
+
+yaml
+Copy
+Edit
+spec:
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 50
+          preference:
+            matchExpressions:
+              - key: "gpu"
+                operator: "Exists"
+✔ Use nodeSelector for simple matching, use Node Affinity for complex logic.
+With nodeSelector, if no matching node is found, the pod stays pending forever.
+With node affinity, you can set a preferred node but allow scheduling on others.
+
+3️⃣ Taints & Tolerations (Node Restriction)
+Taints are applied to nodes to repel pods unless they have a matching toleration.
+Ensures only specific workloads run on certain nodes.
+✅ Example: Taint a node to only allow special workloads
+
+kubectl taint nodes special-node environment=production:NoSchedule
+✅ Example: Pod tolerating the taint
+
+spec:
+  tolerations:
+    - key: "environment"
+      operator: "Equal"
+      value: "production"
+      effect: "NoSchedule"
+✔ Use taints to prevent regular pods from running on critical nodes.
+
+1️⃣ nodeSelector (Simple Label-Based Scheduling)
+Step 1: Label a Node
+
+kubectl label nodes node-1 disk=ssd
+
+Example:- 
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-nodeselector
+spec:
+  nodeSelector:
+    disk: ssd  # Pod will run only on nodes with disk=ssd
+  containers:
+    - name: nginx
+      image: nginx
+
+kubectl apply -f pod-with-nodeselector.yaml
+
+2️⃣ Node Affinity (Advanced Scheduling Rules)
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-nodeaffinity
+spec:
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: "disk"
+                operator: "In"
+                values: ["ssd", "nvme"]  # Pod can run on SSD or NVMe nodes
+  containers:
+    - name: nginx
+      image: nginx
+
+✅ Use case:
+
+If no node has the label disk=ssd or disk=nvme, the pod won't be scheduled.
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-preferred-affinity
+spec:
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 50  # Higher weight means higher priority
+          preference:
+            matchExpressions:
+              - key: "gpu"
+                operator: "Exists"  # Prefer nodes with a GPU
+  containers:
+    - name: nginx
+      image: nginx
+
+✅ Use case:
+
+If a GPU node is available, schedule the pod there.
+If not, schedule it anywhere else.
+
+3️⃣ Taints & Tolerations (Node Restriction)
+Step 1: Add a Taint to a Node
+
+kubectl taint nodes node-2 environment=production:NoSchedule
+
+✅ Example: Prevent normal pods from running on node-2
+
+kubectl taint nodes node-2 environment=production:NoSchedule
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-with-toleration
+spec:
+  tolerations:
+    - key: "environment"
+      operator: "Equal"
+      value: "production"
+      effect: "NoSchedule"  # Allows pod to be scheduled on tainted node
+  containers:
+    - name: nginx
+      image: nginx
+kubectl taint nodes node-2 environment=production:NoSchedule-
+
+1️⃣ NoSchedule
+📌 Effect: The pod will not be scheduled on the tainted node unless it has a matching toleration.
+
+🔹 Example:
+kubectl taint nodes node-1 key=value:NoSchedule
+
+🔹 Pod behavior:
+If a pod has no toleration, it won’t be scheduled on node-1.
+If a pod has matching toleration, it can be scheduled.
+✅ Use case:
+Ensures only specific workloads (e.g., security-sensitive apps) run on a node.
+
+2️⃣ PreferNoSchedule
+📌 Effect: Kubernetes tries to avoid scheduling pods on the tainted node, but it may still happen if no other nodes are available.
+
+🔹 Example:
+kubectl taint nodes node-2 key=value:PreferNoSchedule
+
+🔹 Pod behavior:
+If other nodes are available, the scheduler will avoid node-2.
+If no other nodes are available, the scheduler may place the pod on node-2.
+✅ Use case:
+Soft restriction to prefer but not enforce node isolation.
+
+3️⃣ NoExecute
+📌 Effect:
+
+If a pod does not have a matching toleration, it gets evicted (removed).
+If a pod has a matching toleration, it stays running.
+🔹 Example:
+kubectl taint nodes node-3 key=value:NoExecute
+
+🔹 Pod behavior:
+Existing pods without a matching toleration will be evicted.
+New pods without a matching toleration won’t be scheduled.
+Pods with a matching toleration can stay.
+✅ Use case:
+Used for node failures or temporary issues (e.g., node under maintenance).
+Ensures that only specific workloads remain on the node.
