@@ -1,0 +1,48 @@
+1️⃣ Understanding the Microservices Architecture in Your Citi Project
+
+"Our project follows a microservices architecture where each microservice handles a specific functionality, such as payments, customer management, authentication, and reporting."
+👉 "There are around 15–20 microservices running across different environments (INT, SVC, PROD)."
+
+✅ Authentication Service (Manages user logins, JWT tokens, and OAuth flows)
+✅ Payments Service (Handles financial transactions, integrates with APIs)
+✅ Notifications Service (Sends SMS, email alerts using SNS)
+✅ Fraud Detection Service (Monitors transactions for anomalies)
+
+2️⃣ Kubernetes Pods and Scaling Strategy
+💡 The number of pods per microservice depends on demand and resource allocation.
+💬 Answer:
+👉 "Each microservice runs in its own namespace and has 3–5 pods in lower environments (INT, SVC) and 10–15 pods in production to handle traffic."
+👉 "The number of pods is managed using Horizontal Pod Autoscaler (HPA) based on CPU and memory usage."
+👉 "For example, the Payments service is critical, so it runs minimum 5 pods in PROD, scaling up to 20 pods during peak transactions."
+
+✅ HPA (Horizontal Pod Autoscaler) → Scales pods based on CPU & memory.
+✅ Cluster Autoscaler → Adds/removes worker nodes when needed.
+
+📌 Example kubectl command to check running pods:
+kubectl get pods -n payments-service
+
+3️⃣ How Are Microservices Deployed?
+💡 Deployment strategy ensures zero downtime & rollback capability.
+💬 Answer:
+👉 "We use GitHub Actions & Jenkins CI/CD pipelines for automated deployments."
+👉 "Microservices are deployed as Rolling Updates to ensure zero downtime."
+
+📌 Example command to check deployment strategy:
+kubectl describe deployment payments-service -n payments
+
+Where Do Prometheus & Grafana Run in Kubernetes?
+👉 They run as separate pods in a monitoring namespace (e.g., monitoring).
+👉 They collect and visualize data from all microservices.
+
+How Does Prometheus Collect Metrics?
+✅ Each microservice exposes metrics at an endpoint like /metrics.
+✅ Prometheus scrapes these metrics and stores them.
+✅ Grafana queries Prometheus and visualizes data.
+
+📌 Example of Prometheus scraping a microservice:
+
+scrape_configs:
+  - job_name: 'payments-service'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['payments-service:9090']
