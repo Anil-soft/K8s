@@ -1,0 +1,138 @@
+🔹 Step 1: Pre-Upgrade Steps (Planning & Backup)
+1️⃣ Check the Current Kubernetes Version
+
+kubectl version --short
+
+📌 Purpose:
+Displays the current client and server Kubernetes versions.
+Helps ensure that you are upgrading to the next minor version (one version at a time).
+
+🔹 Example Output:
+Client Version: v1.25.3
+Server Version: v1.25.3
+
+2️⃣ Backup ETCD Data (For HA Clusters)
+ETCDCTL_API=3 etcdctl snapshot save /backup/etcd-snapshot.db
+
+📌 Purpose:
+
+Takes a snapshot of the etcd database, which stores cluster state (nodes, pods, services, etc.).
+Used for disaster recovery if something goes wrong during the upgrade.
+
+🔹 Where is this useful?
+
+Required in self-managed Kubernetes clusters (like kubeadm setups).
+
+🔹 Step 2: Upgrade the Control Plane (Master Node)
+
+4️⃣ Upgrade kubeadm
+sudo apt-get update && sudo apt-get install -y kubeadm
+
+📌 Purpose:
+Installs the latest version of kubeadm, which is required to upgrade the control plane.
+🔹 Why is this necessary?
+kubeadm is responsible for initializing and upgrading the cluster.
+
+5️⃣ Plan the Upgrade
+kubeadm upgrade plan
+
+📌 Purpose:
+Checks if the upgrade is possible.
+Provides information on the target version and component changes.
+
+🔹 Example Output:
+    Upgrade to v1.26.0:
+    Component         Current    New
+    Kube-apiserver   v1.25.3    v1.26.0
+    Kube-controller-manager   v1.25.3  v1.26.0
+    Kube-scheduler   v1.25.3  v1.26.0
+
+6️⃣ Apply the Upgrade to Control Plane
+sudo kubeadm upgrade apply v1.26.0
+📌 Purpose:
+
+Upgrades the Kubernetes control plane components:
+API Server
+Controller Manager
+Scheduler
+Etcd database (if applicable)
+🔹 Why is this needed?
+Ensures the control plane is running the newest version.
+
+7️⃣ Upgrade kubectl and kubelet
+sudo apt-get install -y kubelet kubectl
+
+📌 Purpose:
+kubectl is the command-line tool used to interact with Kubernetes.
+kubelet is the agent running on each node that manages workloads.
+This command ensures they are running the latest versions.
+
+8️⃣ Restart kubelet
+sudo systemctl restart kubelet
+
+📌 Purpose:
+Ensures the kubelet service is restarted after the upgrade.
+Without this, the kubelet might still be running the older version.
+
+🔹 Step 3: Upgrade Worker Nodes
+9️⃣ Upgrade kubeadm on Worker Nodes
+sudo apt-get update && sudo apt-get install -y kubeadm
+
+📌 Purpose:
+Ensures worker nodes have the latest kubeadm version before upgrade.
+
+🔟 Upgrade the Worker Node
+sudo kubeadm upgrade node
+
+📌 Purpose:
+Upgrades the worker node components.
+Worker nodes don't have an API server, scheduler, or etcd—so this command ensures they are compatible.
+
+1️⃣1️⃣ Upgrade kubelet & Restart
+sudo apt-get install -y kubelet
+sudo systemctl restart kubelet
+
+1️⃣2️⃣ Uncordon the Worker Node
+kubectl uncordon <node-name>
+
+📌 Purpose:
+Allows workloads (pods) to be scheduled back on the worker node.
+
+🔹 Example:
+kubectl uncordon worker-node-1
+
+1️⃣3️⃣ Check Control Plane Health
+kubectl get componentstatuses
+
+📌 Purpose:
+Checks if Kubernetes API server, controller manager, and scheduler are healthy.
+
+🔹 Example Output:
+NAME                 STATUS    MESSAGE
+controller-manager   Healthy   ok
+scheduler           Healthy   ok
+etcd-0             Healthy   ok
+
+💬 Interview Answer Summary
+Always upgrade one minor version at a time.
+Backup etcd before upgrading.
+Upgrade control plane first, then worker nodes.
+Drain nodes before upgrade, uncordon after.
+Validate cluster health after upgrade.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
