@@ -49,6 +49,135 @@ Fix:
 Delete unused pods to free up space.
 Resize the node or increase disk storage.
 
+CrashLookBackOff:-
+
+Exception, or Missing Dependencies)
+📌 Cause:
+The application has a bug or an unhandled exception that causes it to crash immediately after starting.
+The application might be missing required dependencies (e.g., a required Python package or missing Java JAR files).
+The containerized app runs fine in local development but crashes in Kubernetes due to an unexpected runtime error.
+🔍 Identifying the Issue
+1️⃣ Check pod status:
+kubectl get pods
+kubectl logs <container-logs>
+
+✅ Fix
+Fix the code: Debug the application and fix the bug.
+Ensure all dependencies are installed:
+If using Python, check requirements.txt and reinstall missing packages.
+If using Java, verify that all JARs are included in the classpath.
+Rebuild and push a new image:
+docker build -t myrepo/user-service:v2 .
+docker push myrepo/user-service:v2
+
+2️⃣ Incorrect Command or Entrypoint
+📌 Cause:
+The container is trying to run a command that doesn’t exist inside the image.
+The command or args in the Kubernetes YAML file doesn’t match what the container expects.
+The Dockerfile’s ENTRYPOINT or CMD might be missing or incorrect.
+🔍 Identifying the Issue
+1️⃣ Check the pod description:
+kubectl describe pod my-app
+
+Example output:
+State: Waiting
+Reason: CrashLoopBackOff
+Last State: Terminated
+Reason: Error
+Exit Code: 127
+Message: /bin/sh: myapp: command not found
+
+What does this mean?
+Exit code 127 means the command doesn’t exist in the container.
+/bin/sh: myapp: command not found means Kubernetes is trying to run myapp, but the binary is missing.
+
+✅ Fix
+Check the Docker image to ensure the binary exists:
+docker run --rm -it myrepo/my-app:latest sh
+
+Inside the container, run:
+ls /bin /usr/bin
+
+If myapp isn’t listed, it means the binary is missing.
+Fix the deployment YAML:
+containers:
+  - name: my-app
+    image: myrepo/my-app:latest
+    command: ["/bin/sh"]
+    args: ["-c", "myapp"]
+
+Redeploy the pod:
+kubectl rollout restart deployment my-app
+
+3️⃣ Database Not Ready (Startup Order Issue)
+📌 Cause:
+The application depends on a database (e.g., MySQL, PostgreSQL) and starts before the database is ready.
+The application tries to connect but fails with "Connection Refused" because the database is still initializing.
+Kubernetes restarts the pod repeatedly, leading to CrashLoopBackOff.
+🔍 Identifying the Issue
+1️⃣ Check logs:
+kubectl logs user-service-xyz123
+
+✅ Fix
+Use an initContainer to wait for the database to be ready before starting the main application.
+Add the following to your deployment.yaml:
+initContainers:
+  - name: wait-for-db
+    image: busybox
+    command: ['sh', '-c', 'until nc -z db-service 5432; do sleep 5; done']
+This ensures the application doesn’t start until the database is available.
+Apply the updated deployment:
+
+4️⃣ Insufficient CPU/Memory (OOMKilled)
+📌 Cause:
+The pod is using more CPU or memory than allowed, and Kubernetes kills the container to free up resources.
+The pod exceeds resource limits defined in the YAML file.
+🔍 Identifying the Issue
+1️⃣ Check the pod description:
+kubectl describe pod analytics-service
+Example output:
+State: Terminated
+Reason: OOMKilled (Out of Memory)
+
+✅ Fix
+Increase memory and CPU limits in the YAML file:
+resources:
+  requests:
+    memory: "512Mi"
+    cpu: "250m"
+  limits:
+    memory: "1Gi"
+    cpu: "500m"
+
+5️⃣ Liveness Probe Failures
+📌 Cause:
+The application takes too long to start, and the liveness probe fails, causing Kubernetes to restart the pod.
+The probe interval is too short, not giving the app enough time to be ready.
+🔍 Identifying the Issue
+1️⃣ Check pod events:
+kubectl describe pod web-api
+
+Example output:
+Warning  Unhealthy  30s (x5 over 3m)  kubelet  Liveness probe failed: HTTP probe failed with status code 500
+✅ Fix
+Increase initialDelaySeconds so Kubernetes waits before checking:
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+
+
+
+
+
+
+
+
+
+
 
 
 
