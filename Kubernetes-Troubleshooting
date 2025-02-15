@@ -1,0 +1,61 @@
+🔥 Common Reasons for ImagePullBackOff Error
+1️⃣ Incorrect Image Name or Tag
+If the image name is incorrect or the tag does not exist in the registry, Kubernetes fails to pull the image.
+Fix:
+Check available image tags in the registry.
+Correct the image name and tag in the Deployment YAML.
+
+Command to verify:
+kubectl describe pod <pod-name> -n namespace
+
+2️⃣ Image Does Not Exist in the Registry
+If the image is removed or never existed in the repository, Kubernetes fails to pull it.
+
+Command to check if the image exists:
+docker pull <image-name>:<tag>
+
+If this fails, update your manifest file with the correct image.
+
+3️⃣ Authentication Issues for Private Registry
+If the image is stored in a private registry (AWS ECR, Docker Hub, GCR), Kubernetes needs authentication to pull it.
+
+Check if credentials are missing:
+kubectl get secret
+
+If the required secret is missing, create one.
+Fix: Create a secret for registry authentication
+
+kubectl create secret docker-registry regcred \
+  --docker-server=<registry-url> \
+  --docker-username=<username> \
+  --docker-password=<password> \
+  --docker-email=<email>
+
+Add the secret to your pod spec:
+spec:
+  imagePullSecrets:
+    - name: regcred
+
+4️⃣ Insufficient Node Resources
+If the node does not have enough disk space or memory, the image cannot be pulled.
+
+Check available disk space on nodes:
+kubectl describe node <node-name>
+
+Check running pods consuming resources:
+kubectl top pod 
+
+Fix:
+Delete unused pods to free up space.
+Resize the node or increase disk storage.
+
+
+
+
+
+
+
+
+
+
+
