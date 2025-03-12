@@ -1,0 +1,69 @@
+Setting up Multi-Cluster Kubernetes on AWS EC2 using Kops
+Overview
+This guide provides a step-by-step approach to setting up a multi-cluster Kubernetes environment on AWS EC2 instances using Kops. Kops (Kubernetes Operations) is a powerful tool for provisioning, managing, and scaling Kubernetes clusters on AWS.
+________________________________________
+1. Prerequisites
+✅ AWS Requirements
+•	AWS CLI installed and configured
+•	IAM user with necessary permissions
+•	Route 53 hosted zone for cluster domain
+•	S3 bucket for Kops state storage
+✅ Local Machine Setup
+•	Install Kops & kubectl
+•	Configure AWS CLI
+•	Set up SSH keys
+________________________________________
+2️.Installing Kops & kubectl
+# Install Kops
+curl -LO https://github.com/kubernetes/kops/releases/latest/download/kops-linux-amd64
+chmod +x kops-linux-amd64
+sudo mv kops-linux-amd64 /usr/local/bin/kops
+
+# Install kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x kubectl
+sudo mv kubectl /usr/local/bin/kubectl
+________________________________________
+
+3️.Setting Up Kops State Storage
+export KOPS_STATE_STORE=s3://my-kops-state-store
+aws s3api create-bucket --bucket my-kops-state-store --region us-east-1
+________________________________________
+4️.Creating a Kubernetes Cluster
+kops create cluster --name=k8s.example.com \
+  --state=$KOPS_STATE_STORE \
+  --zones=us-east-1a,us-east-1b \
+  --node-count=3 \
+  --node-size=t3.medium \
+  --master-size=t3.medium \
+  --dns-zone=k8s.example.com \
+  --yes
+________________________________________
+5️.Verifying Cluster Status
+kops validate cluster --state=$KOPS_STATE_STORE
+kubectl get nodes
+________________________________________
+6️.Managing Multiple Clusters
+To manage multiple clusters, specify different cluster names:
+export KOPS_STATE_STORE=s3://my-kops-state-store
+kops create cluster --name=dev.k8s.example.com --zones=us-west-2a --yes
+kops create cluster --name=prod.k8s.example.com --zones=us-east-1a --yes
+________________________________________
+7️.Scaling & Deleting Clusters
+Scale Nodes:
+kops edit ig nodes --name=k8s.example.com
+kops update cluster k8s.example.com --yes
+
+Delete Cluster:
+kops delete cluster --name=k8s.example.com --state=$KOPS_STATE_STORE --yes
+________________________________________
+
+
+
+Conclusion
+Kops simplifies multi-cluster Kubernetes deployments on AWS, providing automated provisioning, scaling, and management. With the right setup, it becomes easier to maintain isolated environments for different applications.
+🔹 Best Practices:
+•	Use different S3 buckets for each environment
+•	Enable cluster backups using Velero
+•	Use Terraform with Kops for IaC
+
