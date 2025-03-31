@@ -67,3 +67,72 @@ Kops simplifies multi-cluster Kubernetes deployments on AWS, providing automated
 •	Enable cluster backups using Velero
 •	Use Terraform with Kops for IaC
 
+
+Ansible playbook to setup kubekops
+
+---
+- name: Create Kubernetes Cluster with Kops
+  hosts: localhost
+  become: yes
+  vars_files:
+    - vars.yml
+
+  tasks:
+  
+    - name: Install AWS CLI, Kops, and Kubectl
+      apt:
+        name:
+          - awscli
+          - unzip
+        state: present
+
+    - name: Download and Install Kops
+      get_url:
+        url: "https://github.com/kubernetes/kops/releases/latest/download/kops-linux-amd64"
+        dest: "/usr/local/bin/kops"
+        mode: '0755'
+
+    - name: Download and Install Kubectl
+      get_url:
+        url: "https://dl.k8s.io/release/v1.28.0/bin/linux/amd64/kubectl"
+        dest: "/usr/local/bin/kubectl"
+        mode: '0755'
+
+    - name: Create an S3 bucket for Kops state store
+      shell: |
+        aws s3api create-bucket --bucket {{ s3_bucket }} --region {{ aws_region }} --create-bucket-configuration LocationConstraint={{ aws_region }}
+
+    - name: Enable versioning on S3 bucket
+      shell: aws s3api put-bucket-versioning --bucket {{ s3_bucket }} --versioning-configuration Status=Enabled
+
+    - name: Set Kops State Store Environment Variable
+      lineinfile:
+        path: ~/.bashrc
+        line: "export KOPS_STATE_STORE=s3://{{ s3_bucket }}"
+        create: yes
+
+    - name: Create the Kubernetes Cluster Configuration
+      shell: |
+        export KOPS_STATE_STORE=s3://{{ s3_bucket }}
+        kops create cluster \
+          --name={{ cluster_name }} \
+          --state=s3://{{ s3_bucket }} \
+          --zones={{ aws_region }}a \
+          --node-count={{ node_count }} \
+          --node-size={{ node_size }} \
+          --master-size={{ master_size }} \
+          --dns-zone={{ dns_zone }}
+
+    - name: Apply the Kops Cluster Configuration
+      shell: |
+        export KOPS_STATE_STORE=s3://{{ s3_bucket }}
+        kops update cluster --name={{ cluster_name }} --yes
+
+    - name: Validate the Cluster
+      shell: |
+        export KOPS_STATE_STORE=s3://{{ s3_bucket }}
+        kops validate cluster
+      register: cluster_status
+
+    - debug:
+        var: cluster_status.stdout_lines
