@@ -1,6 +1,8 @@
 Setting up Multi-Cluster Kubernetes on AWS EC2 using Kops
 Overview
-This guide provides a step-by-step approach to setting up a multi-cluster Kubernetes environment on AWS EC2 instances using Kops. Kops (Kubernetes Operations) is a powerful tool for provisioning, managing, and scaling Kubernetes clusters on AWS.
+This guide provides a step-by-step approach to setting up a multi-cluster Kubernetes environment on AWS EC2 instances 
+using Kops. Kops (Kubernetes Operations) is a powerful tool for provisioning, managing, and scaling Kubernetes clusters 
+on AWS.
 ________________________________________
 1. Prerequisites
 ✅ AWS Requirements
@@ -61,7 +63,8 @@ ________________________________________
 
 
 Conclusion
-Kops simplifies multi-cluster Kubernetes deployments on AWS, providing automated provisioning, scaling, and management. With the right setup, it becomes easier to maintain isolated environments for different applications.
+Kops simplifies multi-cluster Kubernetes deployments on AWS, providing automated provisioning, scaling, and management. 
+With the right setup, it becomes easier to maintain isolated environments for different applications.
 🔹 Best Practices:
 •	Use different S3 buckets for each environment
 •	Enable cluster backups using Velero
